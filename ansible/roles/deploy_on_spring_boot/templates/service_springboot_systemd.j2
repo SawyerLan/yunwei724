@@ -1,0 +1,17 @@
+[Unit]
+Description={{ pkg.split('/')[-1].split('.')[0] }}
+After=network.target
+
+[Service]
+WorkingDirectory={{ path }}/
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier={{ pkg.split('/')[-1].split('.')[0] }}
+# Sets open_files_limit
+LimitNOFILE = 65535
+Type=simple
+ExecStart={{ JAVA_HOME | regex_replace('/$','') }}/bin/java {{ HOPS_OPTS }}
+ExecStop=/bin/kill -SIGTERM $MAINPID
+
+[Install]
+WantedBy=multi-user.target

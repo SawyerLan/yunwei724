@@ -1,0 +1,5 @@
+# uat
+host_spring_boot:
+  path: /data/app/middle
+  pkgs:
+    - hydee-middle-migrate.jar

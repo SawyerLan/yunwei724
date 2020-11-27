@@ -1,0 +1,7 @@
+# dev #10.200.25.54
+
+host_spring_boot:
+  path: /data/app/middle
+  pkgs:
+    - a.jar
+    - b.jar

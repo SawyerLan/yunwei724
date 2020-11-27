@@ -1,0 +1,14 @@
+# uat 10.200.25.104
+
+host_spring_boot:
+  path: /data/app/middle
+  pkgs:
+    - businesses-gateway.jar
+    - hydee-middle-baseinfo.jar
+    - hydee-xxl-job.jar
+    - oauth.jar
+
+#host_spring_cloud:
+#  path: /data/app/spring-cloud
+#  pkgs:
+#    - hydee-im-server.zip #心跳服务

@@ -1,0 +1,16 @@
+---
+- hosts: dev
+  gather_facts: yes
+  serial: "50%"
+  vars:
+    project_env: dev
+    date: "{{ lookup('pipe', 'date +%Y%m%d-%H%M%S') }}"
+    backup: "{% if project_env == 'pro' %}True{% else %}False{% endif %}"
+  roles:
+    - role: password_check
+
+    - role: deploy_on_spring_boot
+      vars:
+        spring_boot:
+          pkgs:
+            - /root/h3-orgmanager-v2.jar

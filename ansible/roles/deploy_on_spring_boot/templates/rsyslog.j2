@@ -1,0 +1,2 @@
+if $programname == '{{ item.split('/')[-1].split('.')[0] }}' then {{ host_spring_boot['path'] }}/logs/{{ item.split('/')[-1].split('.')[0] }}.log
+& stop

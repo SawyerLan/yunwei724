@@ -1,0 +1,34 @@
+---
+# handlers file for deploy_on_spring_boot
+- name: restart_app_by_shell
+  shell: "set -m ; pid=$(ps aux |grep {{ item[1].split('/')[-1].split('.')[0] }} |grep -v grep|grep -vi ansible |awk '{print $2}') ; [ ! -z \"$pid\" ] && kill -9 $pid; nohup {{ JAVA_HOME }}/bin/java  -Dapollo.meta={{ apollo_addr }} -Xmx{{ Xmx }} -Xms{{ Xms }} -XX:CompressedClassSpaceSize={{ CompressedClassSpaceSize }} -XX:MaxMetaspaceSize={{ MaxMetaspaceSize }} -XX:MaxDirectMemorySize={{ MaxDirectMemorySize }} -XX:-HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/data/middle_log/{{ item[1] |basename }}.heapdump -XX:+UseG1GC -jar {{ deploy_dest }}/{{ item[1] |basename }} >> {{ deploy_dest }}/logs/{{ item[1].split('/')[-1].split('.')[0] }}.log 2>&1 &"
+  args:
+    chdir: "{{ deploy_dest }}"
+  when: inventory_hostname == item[0]['deploy_host']
+  loop: "{{ deploy_on_spring_boot | product(pkg) | list }}"
+
+- name: reload_upstart
+  shell: "initctl reload-configuration"
+
+- name: daemon-reload
+  shell: "systemctl daemon-reload"
+
+- name: restart_app_by_upstart
+  service:
+    name: "{{ item[1].split('/')[-1].split('.')[0] }}"
+    state: restarted
+  when: inventory_hostname == item[0]['deploy_host']
+  loop: "{{ deploy_on_spring_boot | product(pkg) | list }}"
+
+- name: supervisorctl_update
+  shell: source /etc/profile ; env supervisorctl update
+
+- name: restart_supervisord
+  service:
+    name: supervisord
+    state: restarted
+
+- name: restart_rsyslog
+  service:
+    name: rsyslog
+    state: restarted

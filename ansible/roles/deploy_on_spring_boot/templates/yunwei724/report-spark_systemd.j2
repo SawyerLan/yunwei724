@@ -1,0 +1,26 @@
+[Unit]
+Description={{ item.split('/')[-1].split('.')[0] }}
+After=network.target
+
+[Service]
+User=tidb
+Group=tidb
+Environment="JAVA_HOME={{ JAVA_HOME }}"
+WorkingDirectory={{ host_spring_boot['path'] }}/
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier={{ item.split('/')[-1].split('.')[0] }}
+LimitNOFILE = 65535
+Restart=always
+RestartSec=30
+Type=simple
+ExecStart={{ spark['SPARK_HOME'] | regex_replace('/$','') }}/bin/spark-submit \
+          --class com.hydee.h3.report.SparkApplication \
+          --master {{ spark['master'] }} \
+          {{ host_spring_boot['path'] }}/{{ item |basename }} \
+          --spring.profiles.active={{ spring_profiles_active }}
+             
+ExecStop=/bin/kill -SIGTERM $MAINPID
+
+[Install]
+WantedBy=multi-user.target

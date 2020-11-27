@@ -1,0 +1,12 @@
+# dev 10.200.25.164
+host_spring_boot:
+  path: /data/app/middle
+  pkgs:
+    - hydee-middle-order.jar
+    - hydee-middle-payment.jar
+
+host_spring_cloud:
+  path: /data/app/spring-cloud
+  pkgs:
+    # 多节点测试 hash
+    - hydee-im-server.zip #心跳服务

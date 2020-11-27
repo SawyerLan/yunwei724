@@ -1,0 +1,23 @@
+[Unit]
+Description={{ item.split('/')[-1].split('.')[0] }}
+After=network.target
+
+[Service]
+WorkingDirectory={{ host_spring_boot['path'] }}/
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier={{ item.split('/')[-1].split('.')[0] }}
+
+Type=simple
+
+ExecStart={{ JAVA_HOME | regex_replace('/$','') }}/bin/java \
+             -Xmx{{ Xmx }} \
+             -Dapollo.meta={{ apollo_addr }} \
+             -Dapollo.bootstrap.enabled=true \
+             -Dapollo.bootstrap.eagerLoad.enabled=true \
+             -jar {{ host_spring_boot['path'] }}/{{ item |basename }}
+
+ExecStop=/bin/kill -SIGTERM $MAINPID
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,6 @@
+# dev 10.200.25.62
+host_spring_boot:
+  path: /data/app/yunwei724
+  pkgs:
+    - c.jar
+    - d.jar

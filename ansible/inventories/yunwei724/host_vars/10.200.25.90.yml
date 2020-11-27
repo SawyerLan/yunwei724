@@ -1,0 +1,13 @@
+# uat
+host_static:
+  - /data/h5/merchant/
+  - /data/h5/operation/
+  - /data/h5/merchant-admin/  # 小蜜
+  - /data/h5/yaodianjia/     #新药店加前端
+  - /data/h5/ydjia-minimall-ui/
+  - /data/h5/message-h5/  #新药店加客服消息h5
+  - /data/h5/hdsec_manager/
+host_spring_boot:
+  path: /data/app/middle
+  pkgs:
+    - middle-datasync-message.jar

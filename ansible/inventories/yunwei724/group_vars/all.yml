@@ -1,0 +1,3 @@
+host_spring_boot_template_dir: middle
+host_jvm_dump_dir: /data/middle_log
+JAVA_HOME: /usr/local/jdk1.8.0_211

@@ -1,0 +1,6 @@
+---
+# tasks file for password_check
+- name: '检查jenkins密码'
+  fail:
+    msg: '环境密码验证,生产环境需要输入密码（test、uat也需要输入密码）'
+  when: (project_env == 'pro' and env_password != pro_env_pwd) or (no_pro_passwd_check is defined and no_pro_passwd_check == True and ((project_env == 'uat' and env_password != h3_uat) or (project_env == 'test' and env_password != h3_test)))

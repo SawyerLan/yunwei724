@@ -1,0 +1,6 @@
+# dev 10.200.25.216
+host_spring_boot:
+  path: /data/app/middle
+  pkgs:
+    - hydee-middle-member.jar
+    - hydee-middle-third.jar

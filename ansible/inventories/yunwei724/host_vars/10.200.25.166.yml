@@ -1,0 +1,13 @@
+# uat 10.200.25.166
+
+host_spring_boot:
+  path: /data/app/middle
+  pkgs:
+    - hydee-middle-merchandise.jar
+    - hydee-middle-order.jar
+    - hydee-middle-payment.jar
+
+host_spring_cloud:
+  path: /data/app/spring-cloud
+  pkgs:
+    - hydee-im-server.zip

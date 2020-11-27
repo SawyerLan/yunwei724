@@ -1,0 +1,7 @@
+.idea
+*.jar
+ansible_pwd
+deploy_on_spring_boot/vars/*
+password/*
+/ansible_data_k8s
+/ansible_data

@@ -1,0 +1,45 @@
+# spring boot
+# nohup java -jar -Xmx"$run_memory"m -Xms"$run_memory"m $JAR_HOME/$jar_name
+# --spring.profiles.active=test >> $JAR_HOME/log/$jar_log".log" 2>&1 &
+
+description {{ item[1].split('/')[-1].split('.')[0] }}
+author "lanxiong@hydee.cn"
+
+#start on startup
+#stop on shutdown
+
+start on filesystem or runlevel [2345]
+stop on runlevel [!2345]
+
+respawn
+# 异常停止后 自动重启3次，每5s执行
+respawn limit 3 5
+normal exit 0 1 TERM
+
+chdir {{ host_spring_boot['path'] }}/
+
+env DAEMON="{{ JAVA_HOME | regex_replace('/$','') }}/bin/java
+  -Xmx{{ Xmx }}
+  -Xms{{ Xms }}
+  -Dfile.encoding=UTF-8
+  -XX:CompressedClassSpaceSize={{ CompressedClassSpaceSize }}
+  -XX:MaxMetaspaceSize={{ MaxMetaspaceSize }}
+  -XX:MaxDirectMemorySize={{ MaxDirectMemorySize }}
+  -XX:+HeapDumpOnOutOfMemoryError
+  -XX:HeapDumpPath={{ host_jvm_dump_dir }}/{{ item.split('/')[-1].split('.')[0] }}.heapdump \
+  -XX:+UseG1GC
+  -XX:-OmitStackTraceInFastThrow
+  -Darthas.agent-id={{ item.split('/')[-1].split('.')[0] }}_{{ inventory_hostname }}
+  -Darthas.tunnel-server={{ tunnel_server }}
+  {% if sky_conf is defined %}
+  {{ sky_conf }}
+  {% endif %}
+  {% if eureka_cluster is defined %}
+  {{ eureka_cluster }}
+  {% endif %}
+  {% if enc_key is defined %}
+  {{ enc_key }}
+  {% endif %}
+  -jar {{ host_spring_boot['path'] }}/{{ item |basename }}"
+
+exec $DAEMON >> {{ host_spring_boot['path'] }}/logs/{{ item.split('/')[-1].split('.')[0] }}.log 2>&1

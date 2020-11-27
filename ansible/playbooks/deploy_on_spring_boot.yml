@@ -1,0 +1,15 @@
+---
+- hosts: "{{ project_env }}"
+  gather_facts: yes
+  serial: "50%"
+  any_errors_fatal: True
+  vars:
+    date: "{{ lookup('pipe', 'date +%Y%m%d-%H%M%S') }}"
+    backup: "{% if project_env == 'pro' or project_env == 'uat' %}True{% else %}False{% endif %}"
+  roles:
+    - role: password_check
+
+    - role: deploy_on_spring_boot
+      vars:
+        spring_boot:
+          pkgs: "{{ pkg }}"

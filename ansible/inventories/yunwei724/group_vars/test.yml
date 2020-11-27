@@ -1,0 +1,38 @@
+JAVA_HOME: /usr/local/jdk1.8.0_211
+apollo_addr: http://10.200.25.125:8100
+senti_addr: 10.200.25.142:8000
+Xmx: 512M
+Xms: 256M
+CompressedClassSpaceSize: 128m
+MaxMetaspaceSize: 256M
+MaxDirectMemorySize: 256M
+
+middle_id_jar: 
+  apollo_addr: http://10.200.25.125:8100
+
+hydee_middle_baseinfo_jar:
+  Xmx: 768M
+  Xms: 256M
+  CompressedClassSpaceSize: 128m
+  MaxMetaspaceSize: 256M
+  MaxDirectMemorySize: 256M
+
+businesses_gateway_jar:
+  Xmx: 512M
+  Xms: 256M
+  CompressedClassSpaceSize: 128m
+  MaxMetaspaceSize: 256M
+  MaxDirectMemorySize: 256M
+hydee_middle_merchandise_jar: 
+  Xmx: 1024M
+  Xms: 256M
+  CompressedClassSpaceSize: 128m
+  MaxMetaspaceSize: 256M
+  MaxDirectMemorySize: 256M
+hydee_middle_order_jar: 
+  Xmx: 1024M
+  Xms: 256M
+  CompressedClassSpaceSize: 128m
+  MaxMetaspaceSize: 256M
+  MaxDirectMemorySize: 256M
+sky_conf: "-Dskywalking.agent.service_name=middle_{{ item.split('/')[-1] }} -javaagent:/data/skywalking_agent/skywalking-agent.jar"

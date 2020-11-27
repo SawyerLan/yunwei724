@@ -1,0 +1,9 @@
+host_spring_boot:
+  path: /data/app/middle
+  pkgs:
+    - businesses-gateway.jar
+    - hydee-middle-baseinfo.jar
+    - hydee-xxl-job.jar
+    - oauth.jar
+    - middle-id.jar
+

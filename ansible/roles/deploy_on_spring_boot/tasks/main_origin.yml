@@ -1,0 +1,302 @@
+---
+# tasks file for deploy_on_spring_boot
+- name: '检查模板路径是否配置'
+  fail:
+    msg: '模板路径未配置'
+  when: host_spring_boot is defined and item.split('/')[-1] in host_spring_boot['pkgs'] and host_spring_boot_template_dir is not defined
+  loop: "{{ spring_boot['pkgs'] }}"
+
+- name: '检测是否已经部署过，判断是否需要备份'
+  stat:
+    path: "{{ host_spring_boot['path'] }}/{{ item.split('/')[-1] }}"
+  register: file_check
+  when: host_spring_boot is defined and item.split('/')[-1] in host_spring_boot['pkgs']
+  loop: "{{ spring_boot['pkgs'] }}"
+
+- name: '创建备份目录'
+  file:
+    path: /data/backup
+    state: directory
+
+- name: '创建jvm dump目录'
+  file:
+    path: '{{ host_jvm_dump_dir }}'
+    state: directory
+  when: host_jvm_dump_dir is defined
+
+- name: '执行备份'
+  copy:
+    src: "{{ item['stat']['path'] }}"
+    dest: "/data/backup/{{ item['stat']['path'].split('/')[-1] }}.{{ date }}"
+    remote_src: yes
+  when: backup == True and (item['skipped'] is not defined and item['stat']['exists'] == True)
+  loop: "{{ file_check.results }}"
+
+- name: '创建项目包对应配置文件模板目录'
+  file:
+    path: '{{ role_path }}/vars/{{ host_spring_boot_template_dir }}'
+    state: directory
+  when: host_spring_boot_template_dir is defined
+
+- debug: msg="{{ role_path }}"
+
+- name: '检查是否绑定包的配置文件 CentOS7'
+  stat:
+    path: "{{ role_path }}/templates/{{ host_spring_boot_template_dir }}/{{ item.split('/')[-1].split('.')[0] }}_systemd.j2"
+  register: config7_path
+  delegate_to: localhost
+  when: (host_spring_boot is defined and item.split('/')[-1] in host_spring_boot['pkgs']) and ansible_os_family == "RedHat" and ansible_distribution_major_version|int == 7
+  loop: "{{ spring_boot['pkgs'] }}"
+
+- name: '检查是否绑定包的配置文件 CentOS6'
+  stat:
+    path: "{{ role_path }}/templates/{{ host_spring_boot_template_dir }}/{{ item.split('/')[-1].split('.')[0] }}_upstart.j2"
+  register: config6_path
+  delegate_to: localhost
+  when: (host_spring_boot is defined and item.split('/')[-1] in host_spring_boot['pkgs']) and ansible_os_family == "RedHat" and ansible_distribution_major_version|int == 6
+  loop: "{{ spring_boot['pkgs'] }}"
+
+
+- name: "包模板 写入本地变量文件 CentOS7"
+  lineinfile:
+    create: yes
+    dest: "{{ role_path }}/vars/{{ host_spring_boot_template_dir }}/pkg_conf.yml"
+    regexp: "^(.*)pkg7_{{ item['item'].split('/')[-1] | regex_replace('-','_') | regex_replace('\\.','_') }}(.*)$"
+    line: "pkg7_{{ item['item'].split('/')[-1] | regex_replace('-','_') | regex_replace('\\.','_') }}: {{ host_spring_boot_template_dir }}/{{ item['stat']['path'].split('/')[-1]  }}"
+  delegate_to: localhost
+  when: (item['skipped'] is not defined and item['stat']['exists'] == True) and ansible_os_family == "RedHat" and ansible_distribution_major_version|int == 7
+  loop: "{{ config7_path.results }}"
+
+- name: "包模板 写入本地变量文件 CentOS6"
+  lineinfile:
+    create: yes
+    dest: "{{ role_path }}/vars/{{ host_spring_boot_template_dir }}/pkg_conf.yml"
+    regexp: "^(.*)pkg6_{{ item['item'].split('/')[-1] | regex_replace('-','_') | regex_replace('\\.','_') }}(.*)$"
+    line: "pkg6_{{ item['item'].split('/')[-1] | regex_replace('-','_') | regex_replace('\\.','_') }}: {{ host_spring_boot_template_dir }}/{{ item['stat']['path'].split('/')[-1]  }}"
+  delegate_to: localhost
+  when: (item['skipped'] is not defined and item['stat']['exists'] == True) and ansible_os_family == "RedHat" and ansible_distribution_major_version|int == 6
+  loop: "{{ config6_path.results }}"
+
+- name: "公共模板 写入本地变量文件 CentOS7"
+  lineinfile:
+    create: yes
+    dest: "{{ role_path }}/vars/{{ host_spring_boot_template_dir }}/pkg_conf.yml"
+    regexp: "^(.*)pkg7_{{ item['item'].split('/')[-1] | regex_replace('-','_') | regex_replace('\\.','_') }}(.*)$"
+    line: "pkg7_{{ item['item'].split('/')[-1] | regex_replace('-','_') | regex_replace('\\.','_') }}: {{ host_spring_boot_template_dir }}/service_spring_boot_systemd.j2"
+  delegate_to: localhost
+  when: item['skipped'] is not defined and item['stat']['exists'] == False and ansible_os_family == "RedHat" and ansible_distribution_major_version|int == 7
+  loop: "{{ config7_path.results }}"
+
+- name: "公共模板 写入本地变量文件 CentOS6"
+  lineinfile:
+    create: yes
+    dest: "{{ role_path }}/vars/{{ host_spring_boot_template_dir }}/pkg_conf.yml"
+    regexp: "^(.*)pkg6_{{ item['item'].split('/')[-1] | regex_replace('-','_') | regex_replace('\\.','_') }}(.*)$"
+    line: "pkg6_{{ item['item'].split('/')[-1] | regex_replace('-','_') | regex_replace('\\.','_') }}: {{ host_spring_boot_template_dir }}/service_spring_boot_upstart.j2"
+  delegate_to: localhost
+  when: item['skipped'] is not defined and item['stat']['exists'] == False and ansible_os_family == "RedHat" and ansible_distribution_major_version|int == 6
+  loop: "{{ config6_path.results }}"
+
+- name: "动态加载包配置文件"
+  include_vars: "{{ host_spring_boot_template_dir }}/pkg_conf.yml"
+
+- name: '配置systemd服务托管 CentOS7'
+  template:
+    src: "{{ lookup('vars', 'pkg7_'+item.split('/')[-1] |regex_replace('-','_')|regex_replace('\\.','_') )}}"
+    dest: "/usr/lib/systemd/system/{{ item.split('/')[-1].split('.')[0] }}{{ service_tag | default('') }}.service"
+  when: (host_spring_boot is defined and item.split('/')[-1] in host_spring_boot['pkgs']) and ansible_os_family == "RedHat" and ansible_distribution_major_version|int == 7
+  loop: "{{ spring_boot['pkgs'] }}"
+  notify: daemon-reload
+
+- name: '配置upstart服务托管 CentOS6'
+  template:
+    src: "{{ lookup('vars', 'pkg6_'+item.split('/')[-1] |regex_replace('-','_')|regex_replace('\\.','_') )}}"
+    dest: "/etc/init/{{ item.split('/')[-1].split('.')[0] }}{{ service_tag | default('') }}.conf"
+  when: (host_spring_boot is defined and item.split('/')[-1] in host_spring_boot['pkgs']) and ansible_os_family == "RedHat" and ansible_distribution_major_version|int == 6
+  loop: "{{ spring_boot['pkgs'] }}"
+  notify: reload_upstart
+
+- name: '创建部署目录及logs目录'
+  file:
+    path: "{{ host_spring_boot['path'] }}/logs"
+    state: directory
+    recurse: yes
+  when: host_spring_boot is defined
+
+- name: '配置rsyslog'
+  template:
+    src: rsyslog.j2
+    dest: "/etc/rsyslog.d/{{ item.split('/')[-1].split('.')[0] }}{{ service_tag | default('') }}.conf"
+  when: (host_spring_boot is defined and item.split('/')[-1] in host_spring_boot['pkgs']) and ansible_os_family == "RedHat" and ansible_distribution_major_version|int == 7
+  loop: "{{ spring_boot['pkgs'] }}"
+  notify: restart_rsyslog
+
+- debug: msg='restart rsyslog'
+  changed_when: true
+  notify:
+    - restart_rsyslog
+  when: ansible_os_family == "RedHat" and ansible_distribution_major_version|int == 7
+
+- meta: flush_handlers
+
+- name: '执行部署'
+  copy:
+    src: "{{ item }}"
+    dest: "{{ host_spring_boot['path'] }}"
+  when: host_spring_boot is defined and item.split('/')[-1] in host_spring_boot['pkgs']
+  loop: "{{ spring_boot['pkgs'] }}"
+
+#dubbo部署使用
+- name: '同步lib'
+  copy:
+    src: "{{ sync_lib['src'] }}"
+    dest: "{{ sync_lib['dest'] }}"
+  when: host_spring_boot is defined and item.split('/')[-1] in host_spring_boot['pkgs'] and sync_lib is defined
+  loop: "{{ spring_boot['pkgs'] }}"
+
+- name: '重启服务'
+  service:
+    name: "{{ item.split('/')[-1].split('.')[0] }}{{ service_tag | default('') }}"
+    state: restarted
+    enabled: yes
+  when: host_spring_boot is defined and item.split('/')[-1] in host_spring_boot['pkgs']
+  loop: "{{ spring_boot['pkgs'] }}"
+
+
+
+
+
+
+
+
+
+
+#- debug: msg="{{ res }}"
+#- name: 'test facts'
+#  debug:
+#    msg: "{{ lookup('vars', item.split('/')[-1] | regex_replace('-','_') | regex_replace('\\.','_')) }}"
+##    msg: "{{ lookup('vars', item.split('/')[-1] | regex_replace('-','_') | regex_replace('.','_')) }}"
+#  when: host_spring_boot is defined and item.split('/')[-1] in host_spring_boot['pkgs']
+#  loop: "{{ spring_boot['pkgs'] }}"
+
+
+
+
+  # notify: supervisorctl_update
+
+# - name: '重启服务 supervisor'
+#   supervisorctl:
+#     name: "{{ item[1].split('/')[-1].split('.')[0] }}"
+#     state: restarted
+#     # supervisorctl_path:
+#   when: inventory_hostname == item[0]['deploy_host']
+#   loop: "{{ deploy_on_spring_boot | product(pkg) | list }}"
+
+#- name: '配置supervisor托管'
+#  template:
+#    src: supervisor.example
+#    dest: "/etc/supervisord.d/{{ item[1].split('/')[-1].split('.')[0] }}.ini.sample"
+#  when: inventory_hostname == item[0]['deploy_host']
+#  loop: "{{ deploy_on_spring_boot | product(pkg) | list }}"
+
+#- debug:
+##    msg: "set -m ;nohup {{ JAVA_HOME }}/bin/java  -Dapollo.meta={{ apollo_addr }} -Xmx{{ Xmx }} -Xms{{ Xms }} -XX:CompressedClassSpaceSize={{ CompressedClassSpaceSize }} -XX:MaxMetaspaceSize={{ MaxMetaspaceSize }} -XX:MaxDirectMemorySize={{ MaxDirectMemorySize }} -XX:-HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/data/middle_log/{{ item[1] |basename }}.heapdump -XX:+UseG1GC -jar {{ deploy_dest }}/{{ item[1] |basename }} >> {{ deploy_dest }}/logs/{{ item[1].split('/')[-1].split('.')[0] }}.log 2>&1 &"
+#    msg: "{{ deploy_dest }}/{{ item[1].split('/')[-1].split('.')[0] }}"
+#  when: inventory_hostname == item[0]['deploy_host']
+#  loop: "{{ deploy_on_spring_boot | product(pkg) | list }}"
+#- meta: end_play
+
+#- name: '配置supervisor托管'
+#  debug:
+##    src: service_tomcat.j2
+#    msg: "/etc/supervisord.d/{{ item[1].split('/')[-1].split('.')[0] }}.ini"
+#  when: inventory_hostname == item[0]['deploy_host']
+#  loop: "{{ deploy_on_spring_boot | product(pkg) | list }}"
+#- meta: end_play
+
+#- name: '配置supervisor托管'
+#  template:
+#    src: supervisor.example
+#    dest: "/etc/supervisord.d/{{ item[1].split('/')[-1].split('.')[0] }}.ini"
+#  when: inventory_hostname == item[0]['deploy_host']
+#  loop: "{{ deploy_on_spring_boot | product(pkg) | list }}"
+#  notify: restart_supervisord
+
+#- debug:
+#    msg:
+#  when: inventory_hostname == item[0]['deploy_host']
+#  loop: "{{ deploy_on_spring_boot | product(pkg) | list }}"
+
+#- debug:
+#    msg: "
+#          command={{ JAVA_HOME }}/bin/java
+#            -Dapollo.meta={{ apollo_addr }}
+#            -Xmx{{ Xmx }}
+#            -Xms{{ 512M }}
+#            -XX:CompressedClassSpaceSize={{ CompressedClassSpaceSize }}
+#            -XX:MaxMetaspaceSize={{ MaxMetaspaceSize }}
+#            -XX:MaxDirectMemorySize={{ MaxDirectMemorySize }}
+#            -XX:-HeapDumpOnOutOfMemoryError
+#            -XX:HeapDumpPath=/data/middle_log/{{ item[1] |basename }}.heapdump
+#            -XX:+UseG1GC -jar {{ deploy_dest }}/{{ item[1] |basename }}
+#           stdout_logfile={{ deploy_dest }}/{{ item[1].split('/')[-1] }}/logs/{{ item[1].split('/')[-1].split('.')[0] }}.log"
+#  loop: "{{ deploy_on_spring_boot | product(pkg) | list }}"
+
+
+  #- debug:
+#    msg: "{{ item['stat']['exists'] }} ######### {{ item['item'][0]['deploy_host'] }}"
+#  with_items: "{{ file_check.results }}"
+  #when: inventory_hostname == item[0]['deploy_host']
+
+#- name: '检测是否已经部署过，判断是否需要备份'
+#  debug:
+#    msg: "{{ deploy_dest }}/{{ item[1].split('/')[-1].split('.')[0] }}"
+#  loop: "{{ deploy_on_spring_boot | product(pkg) | list }}"
+
+
+#- name: 'Debug 已经部署，进行备份'
+#  debug:
+#    msg: "{{ item.stat.path }}"
+##    dest: "/data/backup/{{ item.stat.path | basename}}.{{ date }}"
+##    remote_src: yes
+#  when: item.stat.exists == True
+#  loop: "{{ file_check.results }}"
+
+#- name: '执行部署'
+#  debug:
+#    msg: "src: {{ item[1] }}, dest: {{ deploy_dest }}"
+#  loop: "{{ deploy_on_spring_boot | product(pkg) | list }}"
+
+
+#- name: '检测是否已经部署过，判断是否需要备份'
+#  debug:
+##    msg: "{{ item }} {{ item[1]"
+#    msg: "{{ deploy_dest }}/{{ item[1] |basename }}"
+##    msg: "{{ deploy_dest }}/{{ item[1].split('/')[-1].split('.')[0] }}"
+##    path: "{{ item[0][1] }}/webapps/{{ item[1] |basename }}"
+##  register: file_check
+##  with_items: "{{ deploy_on_spring_boot  }}"
+#  loop: "{{ deploy_on_spring_boot | product(pkg) | list }}"
+
+#- name: '执行备份'
+#  debug:
+#    msg: "{{ item.stat.path }} dest: /data/backup/{{ item.stat.path.split('/')[-1] }}.{{ date }}"
+##    path: "{{ item.stat.path }}"
+##    dest: "/data/backup/{{ item.stat.path.split('/')[-1] }}.{{ date }}.tar.gz"
+#  when: item['stat']['exists'] == True and inventory_hostname == item['item'][0]['deploy_host']
+#  loop: "{{ file_check.results }}"
+#  ignore_errors: yes
+#- meta: end_play
+
+
+#- name: '执行部署'
+#  debug:
+#    msg: "{{ item }} {{ deploy_dest }}"
+##  unarchive:
+##    src: "{{ item[1] }}"
+##    dest: "{{ deploy_dest }}"
+#  when: inventory_hostname == item[0]['deploy_host']
+#  loop: "{{ deploy_on_spring_boot | product(pkg) | list }}"
+##  notify: restart_app_by_shell
+##  changed_when: true
+#- meta: end_play

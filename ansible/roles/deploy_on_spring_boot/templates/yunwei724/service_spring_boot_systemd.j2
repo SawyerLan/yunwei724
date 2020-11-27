@@ -1,0 +1,39 @@
+[Unit]
+Description={{ item.split('/')[-1].split('.')[0] }}
+After=network.target
+
+[Service]
+WorkingDirectory={{ host_spring_boot['path'] }}/
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier={{ item.split('/')[-1].split('.')[0] }}
+LimitNOFILE = 65535
+Restart=always
+RestartSec=30
+Type=simple
+ExecStart={{ JAVA_HOME | regex_replace('/$','') }}/bin/java \
+            -Dapollo.meta={{ apollo_addr }} \
+            -Xmx{{ Xmx }} \
+            -Xms{{ Xms }} \
+            -Dfile.encoding=UTF-8 \
+            -XX:CompressedClassSpaceSize={{ CompressedClassSpaceSize }}  \
+            -XX:MaxMetaspaceSize={{ MaxMetaspaceSize }} \
+            -XX:MaxDirectMemorySize={{ MaxDirectMemorySize }} \
+            -XX:+HeapDumpOnOutOfMemoryError \
+            -XX:HeapDumpPath={{ host_jvm_dump_dir }}/{{ item.split('/')[-1].split('.')[0] }}.heapdump \
+            -XX:+UseG1GC \
+            -XX:-OmitStackTraceInFastThrow \
+            -Darthas.agent-id={{ item.split('/')[-1].split('.')[0] }}_{{ inventory_hostname }} \
+            -Darthas.tunnel-server={{ tunnel_server }} \
+            {% if sky_conf is defined %}
+            {{ sky_conf }} \
+            {% endif %}
+            {% if enc_key is defined %}
+            {{ enc_key }} \
+            {% endif %}
+            -jar {{ host_spring_boot['path'] }}/{{ item |basename }} {% if spring_profiles_active is defined %} --spring.profiles.active={{ spring_profiles_active }} {% endif %}
+             
+ExecStop=/bin/kill -SIGTERM $MAINPID
+
+[Install]
+WantedBy=multi-user.target

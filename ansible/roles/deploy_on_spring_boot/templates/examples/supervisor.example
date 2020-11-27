@@ -1,0 +1,13 @@
+[program:{{ item[1].split('/')[-1].split('.')[0] }}]
+directory={{ deploy_dest }}/{{ item[1].split('/')[-1].split('.')[0] }}
+command={{ JAVA_HOME }}/bin/java -Dapollo.meta={{ apollo_addr }} -Dapollo.bootstrap.enabled=true -Dapollo.bootstrap.eagerLoad.enabled=true -Xmx{{ Xmx }} -Xms{{ Xms }} -XX:CompressedClassSpaceSize={{ CompressedClassSpaceSize }}  -XX:MaxMetaspaceSize={{ MaxMetaspaceSize }} -XX:MaxDirectMemorySize={{ MaxDirectMemorySize }} -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/data/middle_log/{{ item[1] |basename }}.heapdump -XX:+UseG1GC -jar {{ deploy_dest }}/{{ item[1].split('/')[-1].split('.')[0] }}/{{ item[1] |basename }}
+stdout_logfile={{ deploy_dest }}/{{ item[1].split('/')[-1].split('.')[0] }}/logs/{{ item[1].split('/')[-1].split('.')[0] }}.log
+redirect_stderr=true
+autostart=true
+autorestart=false
+startretries=2
+startsecs=15
+priority=1
+stopasgroup=true
+killasgroup=true
+

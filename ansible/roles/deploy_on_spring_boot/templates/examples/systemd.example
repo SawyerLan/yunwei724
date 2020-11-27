@@ -1,0 +1,28 @@
+[Unit]
+Description=hydee-middle-baseinfo
+After=network.target
+
+[Service]
+
+Environment="JAVA_HOME=/usr/local/jdk1.8.0_211"
+Environment="JRE_HOME=/usr/local/jdk1.8.0_211/jre"
+Environment="CLASSPATH=.:$JAVA_HOME/lib/dt.jar:$JAVA_HOME/lib/tools.jar"
+
+WorkingDirectory=/data/app/middle/hydee-middle-baseinfo/
+Type=simple
+ExecStart=/usr/local/jdk1.8.0_211/bin/java \
+             -Dapollo.meta=http://10.200.25.125:8100 \
+             -Xmx1024M \
+             -Xms512M \
+             -XX:CompressedClassSpaceSize=128m  \
+             -XX:MaxMetaspaceSize=256M \
+             -XX:MaxDirectMemorySize=256M \
+             -XX:+HeapDumpOnOutOfMemoryError \
+             -XX:HeapDumpPath=/data/middle_log/hydee-middle-baseinfo.jar.heapdump \
+             -XX:+UseG1GC \
+             -jar /data/app/middle/hydee-middle-baseinfo/hydee-middle-baseinfo.jar
+
+ExecStop=/bin/kill -SIGTERM $MAINPID
+
+[Install]
+WantedBy=multi-user.target

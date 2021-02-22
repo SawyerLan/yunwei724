@@ -288,3 +288,4 @@ WantedBy=multi-user.target
 
   有的同学可能就会想，这样我的每个服务的在同一个环境或者是机器下，参数就都一样了，比如我的a.jar 和b.jar 如果都部署在test环境下，那他们的启动参数都将是Xmx: 512M Xms: 256M ，但是，我的b服务很耗内存，需要配置为Xmx: 2G怎么办呢？这就引出了一个新的东西：包模板和包变量，这个就到下个章节再讲解。
 
+> 代码路径 https://github.com/SawyerLan/yunwei724
